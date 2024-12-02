@@ -7,6 +7,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 import matplotlib.pyplot as plt
 import io
 import base64
+import os  # To handle the PORT environment variable
 
 app = Flask(__name__)
 CORS(app)
@@ -61,4 +62,6 @@ def analyze():
     })
 
 if __name__ == '__main__':
-    app.run()
+    # Use the PORT environment variable provided by Render
+    port = int(os.environ.get('PORT', 5000))  # Default to 5000 if PORT is not set
+    app.run(host='0.0.0.0', port=port)
