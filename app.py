@@ -68,4 +68,5 @@ def analyze():
         return jsonify({'error': f'Error processing the file: {str(e)}'}), 400
 
 if __name__ == '__main__':
-    app.run(debug=False)  # Use gunicorn for production, not this line when deploying
+    # Remove this line before deployment. Gunicorn will handle the app in production.
+    app.run(debug=False)
