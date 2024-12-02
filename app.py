@@ -7,10 +7,17 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 import matplotlib.pyplot as plt
 import io
 import base64
-import os  # To handle the PORT environment variable
+import os
 
 app = Flask(__name__)
 CORS(app)
+
+
+# Add root route to prevent 404 on "/"
+@app.route('/')
+def index():
+    return 'Welcome to the Sales Analysis API! Please POST your data to /analyze.'
+
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
@@ -61,7 +68,14 @@ def analyze():
         'plot': plot_url
     })
 
+
 if __name__ == '__main__':
+    # Set Flask to production mode
+    app.config['ENV'] = 'production'  # This sets the environment to production
+    app.config['DEBUG'] = False  # Disable debug mode
+
     # Use the PORT environment variable provided by Render
     port = int(os.environ.get('PORT', 5000))  # Default to 5000 if PORT is not set
+
+    # Run the app on 0.0.0.0 and use the correct port
     app.run(host='0.0.0.0', port=port)
