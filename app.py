@@ -12,25 +12,23 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-
 # Add a root route to prevent 404 on "/"
 @app.route('/')
 def index():
     return 'Welcome to the Sales Analysis API! Please POST your data to /analyze.'
-
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
     # Ensure a file is uploaded
     if 'file' not in request.files:
         return jsonify({'error': 'No file part in the request.'}), 400
-
+    
     file = request.files['file']
 
     # Check if the file is a valid CSV file
     if file.filename == '':
         return jsonify({'error': 'No selected file.'}), 400
-
+    
     try:
         # Read the uploaded CSV file into a DataFrame
         df = pd.read_csv(file)
@@ -77,16 +75,15 @@ def analyze():
             'mae': mae,
             'plot': plot_url
         })
-
+    
     except Exception as e:
         return jsonify({'error': f'Error processing the file: {str(e)}'}), 400
-
 
 # Entry point for Gunicorn to run the app
 if __name__ == '__main__':
     app.config['ENV'] = 'production'  # Set Flask to production mode
     app.config['DEBUG'] = False  # Disable debug mode in production
     app.config['TESTING'] = False  # Disable testing mode
-    app.run(host='0.0.0.0', port=5000)
+
     # This will not be used when deploying with Gunicorn
     # app.run(host='0.0.0.0', port=5000)
