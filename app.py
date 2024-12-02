@@ -11,12 +11,10 @@ import base64
 app = Flask(__name__)
 CORS(app)
 
-# Root route, returns the welcome message
 @app.route('/')
 def index():
     return 'Welcome to the Sales Analysis API! Please POST your data to /analyze.'
 
-# Analyze route, accepts POST requests with a file
 @app.route('/analyze', methods=['POST'])
 def analyze():
     if 'file' not in request.files:
@@ -29,27 +27,22 @@ def analyze():
     try:
         df = pd.read_csv(file)
 
-        # Validate dataset columns
         if 'Month' not in df.columns or 'Sales' not in df.columns:
             return jsonify({'error': 'Dataset must contain "Month" and "Sales" columns.'}), 400
 
-        # Process data
         df['Month'] = pd.to_datetime(df['Month'])
         df.set_index('Month', inplace=True)
-        X = np.arange(len(df)).reshape(-1, 1)  # Time index for X
+        X = np.arange(len(df)).reshape(-1, 1)
         y = df['Sales'].values
 
-        # Train the model
         model = LinearRegression()
         model.fit(X, y)
         y_pred = model.predict(X)
 
-        # Calculate metrics
         mse = mean_squared_error(y, y_pred)
         rmse = np.sqrt(mse)
         mae = mean_absolute_error(y, y_pred)
 
-        # Generate and encode the plot
         plt.figure(figsize=(10, 6))
         plt.plot(df.index, y, label='Actual Sales', marker='o')
         plt.plot(df.index, y_pred, label='Predicted Sales', linestyle='--')
@@ -74,6 +67,5 @@ def analyze():
     except Exception as e:
         return jsonify({'error': f'Error processing the file: {str(e)}'}), 400
 
-# If running locally, uncomment this for local testing:
-# if __name__ == '__main__':
-#     app.run(host='0.0.0.0', port=5000)
+if __name__ == '__main__':
+    app.run(debug=False)  # Use gunicorn for production, not this line when deploying
