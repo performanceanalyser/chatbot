@@ -13,7 +13,7 @@ app = Flask(__name__)
 CORS(app)
 
 
-# Add root route to prevent 404 on "/"
+# Add a root route to prevent 404 on "/"
 @app.route('/')
 def index():
     return 'Welcome to the Sales Analysis API! Please POST your data to /analyze.'
@@ -21,61 +21,72 @@ def index():
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
-    # Upload dataset
+    # Ensure a file is uploaded
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part in the request.'}), 400
+
     file = request.files['file']
-    df = pd.read_csv(file)
 
-    # Validate dataset
-    if 'Month' not in df.columns or 'Sales' not in df.columns:
-        return jsonify({'error': 'Dataset must contain "Month" and "Sales" columns.'}), 400
+    # Check if the file is a valid CSV file
+    if file.filename == '':
+        return jsonify({'error': 'No selected file.'}), 400
 
-    # Process data
-    df['Month'] = pd.to_datetime(df['Month'])
-    df.set_index('Month', inplace=True)
-    X = np.arange(len(df)).reshape(-1, 1)
-    y = df['Sales'].values
+    try:
+        # Read the uploaded CSV file into a DataFrame
+        df = pd.read_csv(file)
 
-    # Train model
-    model = LinearRegression()
-    model.fit(X, y)
-    y_pred = model.predict(X)
+        # Validate dataset columns
+        if 'Month' not in df.columns or 'Sales' not in df.columns:
+            return jsonify({'error': 'Dataset must contain "Month" and "Sales" columns.'}), 400
 
-    # Metrics
-    mse = mean_squared_error(y, y_pred)
-    rmse = np.sqrt(mse)
-    mae = mean_absolute_error(y, y_pred)
+        # Process data
+        df['Month'] = pd.to_datetime(df['Month'])
+        df.set_index('Month', inplace=True)
+        X = np.arange(len(df)).reshape(-1, 1)  # X is the time index (0, 1, 2, ...)
+        y = df['Sales'].values
 
-    # Plot graph
-    plt.figure(figsize=(10, 6))
-    plt.plot(df.index, y, label='Actual Sales', marker='o')
-    plt.plot(df.index, y_pred, label='Predicted Sales', linestyle='--')
-    plt.title('Sales Analysis')
-    plt.xlabel('Month')
-    plt.ylabel('Sales')
-    plt.legend()
-    plt.grid()
+        # Train linear regression model
+        model = LinearRegression()
+        model.fit(X, y)
+        y_pred = model.predict(X)
 
-    # Save plot to base64 string
-    img = io.BytesIO()
-    plt.savefig(img, format='png')
-    img.seek(0)
-    plot_url = base64.b64encode(img.getvalue()).decode()
+        # Calculate metrics
+        mse = mean_squared_error(y, y_pred)
+        rmse = np.sqrt(mse)
+        mae = mean_absolute_error(y, y_pred)
 
-    return jsonify({
-        'mse': mse,
-        'rmse': rmse,
-        'mae': mae,
-        'plot': plot_url
-    })
+        # Plot the actual vs predicted sales
+        plt.figure(figsize=(10, 6))
+        plt.plot(df.index, y, label='Actual Sales', marker='o')
+        plt.plot(df.index, y_pred, label='Predicted Sales', linestyle='--')
+        plt.title('Sales Analysis')
+        plt.xlabel('Month')
+        plt.ylabel('Sales')
+        plt.legend()
+        plt.grid()
+
+        # Save plot to a base64 string to return as part of the JSON response
+        img = io.BytesIO()
+        plt.savefig(img, format='png')
+        img.seek(0)
+        plot_url = base64.b64encode(img.getvalue()).decode()
+
+        return jsonify({
+            'mse': mse,
+            'rmse': rmse,
+            'mae': mae,
+            'plot': plot_url
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Error processing the file: {str(e)}'}), 400
 
 
+# Entry point for Gunicorn to run the app
 if __name__ == '__main__':
-    # Set Flask to production mode
-    app.config['ENV'] = 'production'  # This sets the environment to production
-    app.config['DEBUG'] = False  # Disable debug mode
-
-    # Use the PORT environment variable provided by Render
-    port = int(os.environ.get('PORT', 5000))  # Default to 5000 if PORT is not set
-
-    # Run the app on 0.0.0.0 and use the correct port
-    app.run(host='0.0.0.0', port=port)
+    app.config['ENV'] = 'production'  # Set Flask to production mode
+    app.config['DEBUG'] = False  # Disable debug mode in production
+    app.config['TESTING'] = False  # Disable testing mode
+    app.run(host='0.0.0.0', port=5000)
+    # This will not be used when deploying with Gunicorn
+    # app.run(host='0.0.0.0', port=5000)
